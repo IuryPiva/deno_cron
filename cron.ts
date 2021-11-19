@@ -14,8 +14,8 @@ const schedules = new Map<string, Array<JobType>>();
 let schedulerTimeIntervalID: ReturnType<typeof setInterval> = 0;
 let shouldStopRunningScheduler = false;
 
-export const cron = (schedule: string = "", job: JobType) => {
-  let jobs = schedules.has(schedule)
+export const cron = (schedule = "", job: JobType) => {
+  const jobs = schedules.has(schedule)
     ? [...(schedules.get(schedule) || []), job]
     : [job];
   schedules.set(schedule, jobs);
@@ -66,8 +66,7 @@ const isMatched = (date: Date, timeFlag: string, type: TIME_PART): boolean => {
 };
 
 export const validate = (schedule: string, date: Date = new Date()) => {
-  // @ts-ignore
-  const timeObj: Record<TIME_PART, boolean> = {};
+  const timeObj: {[key in TIME_PART]?: boolean} = {};
 
   const [
     dayOfWeek,
