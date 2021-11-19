@@ -9,24 +9,52 @@ enum TIME_PART {
   MONTH = "MONTH",
 }
 
+type ScheduleObject = {
+  second?: string | number;
+  minute?: string | number;
+  hour?: string | number;
+  dayOfWeek?: string | number;
+  dayOfMonth?: string | number;
+  month?: string | number;
+};
+
+class Schedule {
+  schedule: ScheduleObject;
+
+  constructor(schedule: ScheduleObject) {
+    this.schedule = { ...schedule };
+
+    this.schedule.second = schedule.second ?? 1;
+    this.schedule.minute = schedule.minute ?? "*";
+    this.schedule.hour = schedule.hour ?? "*";
+    this.schedule.dayOfWeek = schedule.dayOfWeek ?? "*";
+    this.schedule.dayOfMonth = schedule.dayOfMonth ?? "*";
+    this.schedule.month = schedule.month ?? "*";
+  }
+
+  get scheduleString() {
+    return `${this.schedule.second} ${this.schedule.minute ?? "*"} ${
+      this.schedule.hour ?? "*"
+    } ${this.schedule.dayOfWeek ?? "*"} ${this.schedule.dayOfMonth ?? "*"} ${
+      this.schedule.month ?? "*"
+    }`;
+  }
+}
+
 const schedules = new Map<string, Array<JobType>>();
 
 let schedulerTimeIntervalID: ReturnType<typeof setInterval> = 0;
 let shouldStopRunningScheduler = false;
 
-const isValidScheduleString = (schedule: unknown) => {
-  if (typeof schedule != "string") return false;
+export const cron = (schedule: ScheduleObject | string = "", job: JobType) => {
+  if (typeof schedule == "object") {
+    schedule = new Schedule(schedule).scheduleString;
+  }
 
-  const cronParts = schedule.split(" ");
-  if (cronParts.length < 5 || cronParts.length > 6) return false;
-
-  return cronParts.every(part => /^[0-9]*$/.test(part))
-};
-
-export const cron = (schedule: string, job: JobType) => {
-  const jobs = schedules.has(schedule)
+  let jobs = schedules.has(schedule)
     ? [...(schedules.get(schedule) || []), job]
     : [job];
+
   schedules.set(schedule, jobs);
 };
 
@@ -74,9 +102,7 @@ const isMatched = (date: Date, timeFlag: string, type: TIME_PART): boolean => {
   return false;
 };
 
-export const validate = (schedule: string, date: Date = new Date()) => {
-  const timeObj: { [key in TIME_PART]?: boolean } = {};
-
+export const getCronValues = (schedule: string) => {
   const [
     dayOfWeek,
     month,
@@ -86,7 +112,7 @@ export const validate = (schedule: string, date: Date = new Date()) => {
     second = "01",
   ] = schedule.split(" ").reverse();
 
-  const cronValues = {
+  return {
     [SECOND]: second,
     [MINUTE]: minute,
     [HOUR]: hour,
@@ -94,6 +120,12 @@ export const validate = (schedule: string, date: Date = new Date()) => {
     [DAY_OF_WEEK]: dayOfWeek,
     [DAY_OF_MONTH]: dayOfMonth,
   };
+};
+
+export const validate = (schedule: string, date: Date = new Date()) => {
+  const timeObj: {[key in TIME_PART]?: boolean} = {};
+
+  const cronValues = getCronValues(schedule);
 
   for (const key in cronValues) {
     timeObj[key as TIME_PART] = isMatched(
@@ -103,9 +135,8 @@ export const validate = (schedule: string, date: Date = new Date()) => {
     );
   }
 
-  const didMatch = Object.values(timeObj).every(Boolean);
   return {
-    didMatch,
+    didMatch: Object.values(timeObj).every(Boolean),
     entries: timeObj,
   };
 };
