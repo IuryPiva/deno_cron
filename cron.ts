@@ -14,16 +14,17 @@ const schedules = new Map<string, Array<JobType>>();
 let schedulerTimeIntervalID: ReturnType<typeof setInterval> = 0;
 let shouldStopRunningScheduler = false;
 
-const isValidScheduleString = (schedule: unknown) => {
+const isValidScheduleString = (schedule: unknown): schedule is string => {
   if (typeof schedule != "string") return false;
 
-  const cronParts = schedule.split(" ");
-  if (cronParts.length < 5 || cronParts.length > 6) return false;
-
-  return cronParts.every(part => /^[0-9]*$/.test(part))
+  return /(((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,6}/.test(schedule);
 };
 
 export const cron = (schedule: string, job: JobType) => {
+  if (!isValidScheduleString(schedule)) {
+    throw new Error("Invalid cron schedule");
+  }
+
   const jobs = schedules.has(schedule)
     ? [...(schedules.get(schedule) || []), job]
     : [job];
